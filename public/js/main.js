@@ -40,16 +40,12 @@ function initializeMap() {
         styles: styleArr
     });
 
-
-
     return currentMap;
-
-
 }
 
+var markers = {};
 
-
-function drawMarker(currentMap, type, coords) {
+function drawMarker(currentMap, type, coords, name) {
     var iconURLs = {
         hotel: '/images/lodging_0star.png',
         restaurant: '/images/restaurant.png',
@@ -62,5 +58,8 @@ function drawMarker(currentMap, type, coords) {
         icon: iconURL,
         position: latLng
     });
+    markers[name] = marker;
+
     marker.setMap(currentMap);
+    return marker;
 }
