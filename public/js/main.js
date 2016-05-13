@@ -43,7 +43,6 @@ function initializeMap() {
     return currentMap;
 }
 
-var markers = {};
 
 function drawMarker(currentMap, type, coords, name) {
     var iconURLs = {
@@ -58,7 +57,6 @@ function drawMarker(currentMap, type, coords, name) {
         icon: iconURL,
         position: latLng
     });
-    markers[name] = marker;
 
     marker.setMap(currentMap);
     return marker;

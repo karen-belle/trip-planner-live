@@ -42,23 +42,48 @@ $(document).ready(function() {
         addToItinerary(selection, activities, 'activity', '.activity-list')
     });
 
-    //REMOVING AN ITEM FROM ITINERARY AND CORRESPONDING MARKER TO MAP
+
+    function addToItinerary(selection, array, categoryStr, list) {
+        var selected = array.filter(function(element) {
+            return element.id === +selection;
+        });
+        //create new element and append to DOM
+        var itinItem = `<div class="itinerary-item" data-type="${categoryStr}"><span class="title">${ selected[0].name}</span><button class="btn btn-xs btn-danger remove btn-circle">x</button></div>`
+        $(itinItem).appendTo(list);
+
+        //get coords obj for selected place
+        var location = places[selected[0].placeId - 1].location
+
+        //draw the associated marker on map
+        var marker = drawMarker(curMap, categoryStr, location, name);
+        curMap.setCenter(new google.maps.LatLng(location[0], location[1]));
+
+        //add the item to current day
+        var day = currentDayTitle();
+        allDays[day][categoryStr].push({ item: selected[0], location: location, marker: marker });
+    };
+
+    function currentDayTitle(){
+        return "day" + $('.current-day').text();
+    }
+
+
+    //REMOVING AN ITEM FROM ITINERARY AND CORRESPONDING MARKER FROM MAP
     $('.list-group').on('click', '.btn.remove', function() {
         var selected = $(this).parent('.itinerary-item')
 
         var name = $(selected).find('.title').text()
-            // markers[name].setMap(null);
         selected.remove();
 
-        var dayNum = "day" + $('.current-day').text();
+        var day = currentDayTitle();
         var category = $(selected).attr("data-type");
-        allDays[dayNum][category].forEach(function(elem, index) {
-                if (elem.item.name === name) {
-                    elem.marker.setMap(null);
-                    allDays[dayNum][category].splice(index, 1);
-                }
-            })
-            console.log(allDays[dayNum]);
+        allDays[day][category].forEach(function(elem, index) {
+            if (elem.item.name === name) {
+                elem.marker.setMap(null);
+                allDays[day][category].splice(index, 1);
+            }
+        })
+        console.log(allDays[day]);
     });
 
     //ADD DAY
@@ -76,61 +101,75 @@ $(document).ready(function() {
 
     //SWITCH DAYS
     $('.day-buttons').on('click', '.day-btn', function() {
+        switchDays(this);
+    });
+
+    function switchDays(dayToSwitchTo) {
         var prevDay = $('.current-day').text();
-        var number = Number($(this).text());
+        var number = Number($(dayToSwitchTo).text());
         if (!isNaN(number)) {
             $('.day-btn').removeClass('current-day')
-            $(this).addClass('current-day');
+            $(dayToSwitchTo).addClass('current-day');
             $('#day-title span').text('Day ' + number);
             $('.list-group').empty();
 
-            for(var key in allDays['day' + prevDay]){
-                for(var item in allDays['day' + prevDay][key]){
+            console.log("switchDays should be deleted day", allDays['day' + prevDay]);
+
+            for (var key in allDays['day' + prevDay]) {
+                for (var item in allDays['day' + prevDay][key]) {
                     allDays['day' + prevDay][key][item].marker.setMap(null);
                 }
             }
-              for(var key in allDays['day' + number]){
-                allDays['day'+number][key].forEach(function(element, index){
+
+            for (var key in allDays['day' + number]) {
+                allDays['day' + number][key].forEach(function(element, index) {
                     var itinItem = `<div class="itinerary-item" data-type="${key}"><span class="title">${element.item.name}</span><button class="btn btn-xs btn-danger remove btn-circle">x</button></div>`
-                    var list = '.'+key +'-list';
-                    
+                    var list = '.' + key + '-list';
+
                     $(itinItem).appendTo(list);
-
-                    drawMarker(curMap, key, element.location, element.item.name);
-                    curMap.setCenter(new google.maps.LatLng(element.location[0], element.location[1]));
-
+                    element.marker.setMap(curMap);
                 });
             }
         }
+    }
 
-    });
+    //REMOVE A DAY
+    $('#day-title .remove').on('click', function() {
+        var curNum = Number($('.current-day').text());
+        var lastNum = +$('.day-buttons .btn').not('#day-add').last().text();
 
+        if (lastNum !== curNum) //it's not the last day, time to shift
+        {
+            //update button numbers
+            $('.current-day').nextAll().not('#day-add').each(function() {
+                $(this).text(Number($(this).text()) - 1);
+            })
+            //set curday to the number of the current day (for while loop)
+            var curDay = curNum;
+            var newCurrent = $('.current-day').next();
+            // console.log(newCurrent); //new current day should be the next day
+        }
+        //if there is not a next day (this is the last day) the new current day should be the previous day
+        if(!newCurrent) var newCurrent = $('.current-day').prev();
+        
 
+        //switch days using the new current day as 'this' and then remove that day button
+        var currentDayToRemove = $('.current-day');
+        switchDays(newCurrent);
+        currentDayToRemove.remove();
 
-    function addToItinerary(selection, array, categoryStr, list) {
-        var selected = array.filter(function(element) {
-            return element.id === +selection;
-        });
-        var name = selected[0].name
+        //for each day reassign the current day in the obj to the next
+        while (lastNum - curDay > 0) {
+            allDays['day' + curDay] = allDays['day' + (curDay + 1)];
+            curDay++;
+        }
+        // console.dir(allDays)
+        delete allDays['day' + lastNum]; //delete the last day (a duplicate at this point)
+        console.dir(allDays)
 
-        var itinItem = `<div class="itinerary-item" data-type="${categoryStr}"><span class="title">${name}</span><button class="btn btn-xs btn-danger remove btn-circle">x</button></div>`
+        //change the day title to the 'next' (now current day) or last day
+        // var dayNum = lastNum === curNum ? curNum - 1 : curNum;
+        // $('#day-title span').text('Day ' + (dayNum));
 
-        $(itinItem).appendTo(list);
-
-        var placeId = selected[0].placeId
-        var location = places[placeId - 1].location
-
-        var marker = drawMarker(curMap, categoryStr, location, name);
-        curMap.setCenter(new google.maps.LatLng(location[0], location[1]));
-        //console.log(marker);
-
-        var dayNum = "day" + $('.current-day').text();
-        allDays[dayNum][categoryStr].push({ item: selected[0], location:location, marker: marker });
-        //allDays[dayNum].markers.push(marker);
-        console.log(allDays[dayNum]);
-    };
-
-
-
-
+    })
 })
