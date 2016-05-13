@@ -66,16 +66,43 @@ $(document).ready(function() {
         var newDayNum = +($(this).prev().text()) + 1;
         var daybutton = `<button class="btn btn-circle day-btn">${newDayNum}</button>`
         $(this).before(daybutton);
+
+        allDays["day" + newDayNum] = {
+            hotel: [],
+            restaurant: [],
+            activity: []
+        }
     })
 
     //SWITCH DAYS
     $('.day-buttons').on('click', '.day-btn', function() {
+        var prevDay = $('.current-day').text();
         var number = Number($(this).text());
         if (!isNaN(number)) {
             $('.day-btn').removeClass('current-day')
             $(this).addClass('current-day');
             $('#day-title span').text('Day ' + number);
+            $('.list-group').empty();
+
+            for(var key in allDays['day' + prevDay]){
+                for(var item in allDays['day' + prevDay][key]){
+                    allDays['day' + prevDay][key][item].marker.setMap(null);
+                }
+            }
+              for(var key in allDays['day' + number]){
+                allDays['day'+number][key].forEach(function(element, index){
+                    var itinItem = `<div class="itinerary-item" data-type="${key}"><span class="title">${element.item.name}</span><button class="btn btn-xs btn-danger remove btn-circle">x</button></div>`
+                    var list = '.'+key +'-list';
+                    
+                    $(itinItem).appendTo(list);
+
+                    drawMarker(curMap, key, element.location, element.item.name);
+                    curMap.setCenter(new google.maps.LatLng(element.location[0], element.location[1]));
+
+                });
+            }
         }
+
     });
 
 
@@ -98,7 +125,7 @@ $(document).ready(function() {
         //console.log(marker);
 
         var dayNum = "day" + $('.current-day').text();
-        allDays[dayNum][categoryStr].push({ item: selected[0], marker: marker });
+        allDays[dayNum][categoryStr].push({ item: selected[0], location:location, marker: marker });
         //allDays[dayNum].markers.push(marker);
         console.log(allDays[dayNum]);
     };
